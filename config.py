@@ -14,7 +14,7 @@ class Config:
     """
     # --- Flask and Extension Config ---
     # This correctly loads the secret key from your .env file.
-    SECRET_KEY = os.environ.get('SECRET_KEY')
+    SECRET_KEY = os.environ.get('SECRET_KEY', 'super-secret')
     OWNER_API_KEY = os.environ.get('OWNER_API_KEY')
     # NOTE: We only need the key here for comparison, but you can expose the secret too.
     OWNER_API_SECRET = os.environ.get('OWNER_API_SECRET')

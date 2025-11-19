@@ -3,7 +3,7 @@
 
 
 # Server socket
-bind = "0.0.0.0:8088"
+bind = "0.0.0.0:10000"
 
 # Worker processes
 workers = 1

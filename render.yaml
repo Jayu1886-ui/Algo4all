@@ -1,0 +1,33 @@
+services:
+  - type: web
+    name: algo4all-web
+    env: python
+    region: oregon
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "gunicorn -c gunicorn.conf.py wsgi:application"
+    envVars:
+      - key: FLASK_ENV
+        value: production
+      - key: REDIS_URL
+        fromService:
+          name: algo4all-redis
+          type: redis
+          property: connectionString
+
+  - type: worker
+    name: algo4all-celery
+    env: python
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "celery -A celery_app.celery worker --loglevel=info"
+
+  - type: worker
+    name: algo4all-celery-beat
+    env: python
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "celery -A celery_app.celery beat --loglevel=info"
+
+databases:
+  - name: algo4all-redis
+    plan: free
+    region: oregon
+    type: redis

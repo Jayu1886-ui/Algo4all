@@ -42,16 +42,7 @@ services:
     plan: free
     region: oregon
 
-# -----------------------------
-# 3️⃣ PostgreSQL Service (Managed)
-# -----------------------------
-  - type: postgres
-    name: algo4all-db
-    plan: free
-    region: oregon
-    databaseName: algo4all
-    user: algo_user
-    password: your-db-password
+
 
 # -----------------------------
 # 4️⃣ Celery Worker
@@ -102,3 +93,4 @@ services:
         value: postgres://algo4all-db:5432/algo4all
       - key: UPSTOX_ACCESS_TOKEN_FILE
         value: access_token.txt
+

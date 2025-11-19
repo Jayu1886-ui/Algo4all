@@ -1,0 +1,53 @@
+<!-- In file: app/templates/base.html -->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{% block title %}ALGO4ALL{% endblock %}</title>
+    <!-- Assuming your compiled TailwindCSS is in style.css -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+    {% block head %}{% endblock %}
+</head>
+<body class="bg-gray-100 text-gray-900">
+
+    <!-- The main layout container that holds everything -->
+    <div id="app-container">
+        
+        <!-- Header: This will be shown on all pages EXCEPT ones that specifically hide it -->
+        {% if not hide_layout %}
+            {% include 'main/_header.html' %}
+        {% endif %}
+
+        <!-- Main content area where child templates will be injected -->
+        <main class="container mx-auto p-4">
+            <!-- Flashed messages block will appear above the content -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="mb-4">
+                        {% for category, message in messages %}
+                            <div class="rounded-md p-4 {{ 'bg-red-100 border-red-400 text-red-700' if category == 'error' else 'bg-green-100 border-green-400 text-green-700' }}" role="alert">
+                                <p>{{ message }}</p>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+            
+            <!-- This is where the content of dashboard.html, login.html, etc. goes -->
+            {% block content %}{% endblock %}
+        </main>
+
+        <!-- Footer: Also controlled by the hide_layout flag -->
+        {% if not hide_layout %}
+            {% include 'main/_footer.html' %}
+        {% endif %}
+
+    </div> <!-- End of app-container -->
+
+    <!-- Block for page-specific scripts -->
+    {% block scripts %}{% endblock %}
+
+</body>
+</html>

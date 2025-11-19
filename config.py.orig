@@ -1,0 +1,51 @@
+# In file: config.py
+
+import os
+
+class Config:
+    """
+    Production configuration with ALL CAPS for ALL settings to be loaded by Flask.
+    """
+    # Flask and Extension Config
+    SECRET_KEY = os.environ.get('SECRET_KEY')
+    SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL')
+    SQLALCHEMY_ENGINE_OPTIONS = {
+        "pool_size": 20,
+        "pool_recycle": 3600,
+        "pool_pre_ping": True,
+    }
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
+    
+    # Redis Cache Configuration
+    CACHE_TYPE = "RedisCache"
+    CACHE_DEFAULT_TIMEOUT = 300
+    CACHE_REDIS_URL = os.environ.get('REDIS_URL')
+
+    # SocketIO Message Queue
+    SOCKETIO_MESSAGE_QUEUE = os.environ.get('REDIS_URL')
+
+    # --- Upstox App Credentials ---
+    UPSTOX_APP_CLIENT_ID="YOUR_REAL_UPSTOX_CLIENT_ID"
+    UPSTOX_REDIRECT_URI="http://127.0.0.1:8000/auth/callback"
+
+    # --- CORRECT, UPPERCASE CELERY CONFIGURATION ---
+    # Celery understands these uppercase, prefixed keys when loaded from Flask.
+    CELERY_BROKER_URL = os.environ.get('REDIS_URL')
+    CELERY_RESULT_BACKEND = os.environ.get('REDIS_URL')
+    
+    CELERY_ACCEPT_CONTENT = ['json']
+    CELERY_TASK_SERIALIZER = 'json'
+    CELERY_RESULT_SERIALIZER = 'json'
+    CELERY_TIMEZONE = "Asia/Kolkata"
+    CELERY_TASK_TRACK_STARTED = True
+    CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+    
+    # Celery Beat Schedule
+    CELERY_BEAT_SCHEDULE = {
+        'run-master-task-every-30-seconds': {
+            'task': 'app.tasks.master_task.master_trading_task',
+            'schedule': 30.0,
+        },
+    }
+
+    

@@ -1,0 +1,117 @@
+<!-- app/templates/index.html -->
+{% extends "base.html" %}
+{% block title %}Welcome{% endblock %}
+
+{% block content %}
+<div class="bg-gray-900"> <!-- Set a dark base for the whole page -->
+
+    <!-- Hero Section -->
+    <!-- On mobile, padding is reduced (`py-16`, `px-4`). On larger screens (`lg`), it increases. -->
+    <main class="text-center py-16 px-4 lg:py-24">
+        
+        <!-- Logo appears at the top for brand recognition -->
+        <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Algo4All Logo" class="h-20 mx-auto mb-8">
+
+        <!-- Responsive Typography -->
+        <!-- The text is large on mobile (`text-4xl`) and gets even larger on bigger screens (`md:text-6xl`). -->
+        <h1 class="text-4xl font-extrabold tracking-tight text-white md:text-6xl">
+            <span class="block">Algorithmic Trading</span>
+            <span class="block text-blue-400">Made Simple</span>
+        </h1>
+        
+        <!-- The paragraph text is also responsive, with a comfortable width on all devices. -->
+        <p class="mt-5 max-w-md mx-auto text-lg text-gray-300 md:text-xl md:max-w-3xl">
+            Execute trades with discipline and precision using our advanced algorithmic strategies.
+        </p>
+        
+        <!-- Call to Action Button -->
+        <!-- Simplified to a single, clear button. The button is full-width on mobile for easy tapping. -->
+        <div class="mt-12">
+            <a href="{{ url_for('main.disclaimer') }}" class="w-full inline-block px-8 py-4 border border-transparent text-lg font-bold rounded-full text-white bg-blue-600 hover:bg-blue-700 shadow-lg md:w-auto md:text-xl">
+                Get Started
+            </a>
+        </div>
+    </main>
+
+    <!-- Feature Section -->
+    <!-- This section provides more details for users who scroll down. -->
+    <div class="py-16 bg-white sm:py-20">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center">
+                <h2 class="text-base text-blue-600 font-semibold tracking-wide uppercase">Why Algo4all?</h2>
+                <p class="mt-2 text-3xl leading-8 font-extrabold tracking-tight text-gray-900 sm:text-4xl">
+                    Everything You Need to Trade Smarter
+                </p>
+            </div>
+
+            <!-- Responsive Grid Layout -->
+            <!-- It's a single column list on mobile. On medium screens (`md`), it becomes a 2-column grid. -->
+            <div class="mt-12">
+                <div class="space-y-10 md:space-y-0 md:grid md:grid-cols-2 md:gap-x-8 md:gap-y-10">
+                    
+                    <!-- Feature 1: Automated Trading -->
+                    <div class="flex">
+                        <div class="flex-shrink-0">
+                            <div class="flex items-center justify-center h-12 w-12 rounded-md bg-blue-500 text-white">
+                                <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                            </div>
+                        </div>
+                        <div class="ml-4">
+                            <h3 class="text-lg leading-6 font-medium text-gray-900">Automated Execution</h3>
+                            <p class="mt-2 text-base text-gray-500">
+                                Remove emotion. Let our system execute trades automatically based on your pre-defined rules.
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Feature 2: Technical Analysis -->
+                    <div class="flex">
+                        <div class="flex-shrink-0">
+                            <div class="flex items-center justify-center h-12 w-12 rounded-md bg-blue-500 text-white">
+                                <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                            </div>
+                        </div>
+                        <div class="ml-4">
+                            <h3 class="text-lg leading-6 font-medium text-gray-900">Data-Driven Strategy</h3>
+                            <p class="mt-2 text-base text-gray-500">
+                                Utilizes real-time market analysis and SMA indicators to identify trading opportunities.
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Feature 3: Secure Platform -->
+                    <div class="flex">
+                        <div class="flex-shrink-0">
+                            <div class="flex items-center justify-center h-12 w-12 rounded-md bg-blue-500 text-white">
+                                <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+                            </div>
+                        </div>
+                        <div class="ml-4">
+                            <h3 class="text-lg leading-6 font-medium text-gray-900">Secure & Private</h3>
+                            <p class="mt-2 text-base text-gray-500">
+                                Your API credentials are not stored. Authentication is handled securely through Upstox for each session.
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Feature 4: Full Control -->
+                    <div class="flex">
+                        <div class="flex-shrink-0">
+                            <div class="flex items-center justify-center h-12 w-12 rounded-md bg-blue-500 text-white">
+                                <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066 2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/></svg>
+                            </div>
+                        </div>
+                        <div class="ml-4">
+                            <h3 class="text-lg leading-6 font-medium text-gray-900">Personal Settings</h3>
+                            <p class="mt-2 text-base text-gray-500">
+                                You have full control to toggle your trading bot, set quantities, and view your live portfolio.
+                            </p>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

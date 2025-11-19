@@ -1,0 +1,51 @@
+<!-- app/templates/auth/register.html -->
+{% extends "base.html" %}
+{% block title %}Register Account{% endblock %}
+
+{% block content %}
+<div class="flex min-h-full w-full flex-col items-center justify-center bg-white px-4 py-12">
+    <div class="w-full max-w-sm text-center">
+
+        <!-- Header -->
+        <svg class="mx-auto h-8 w-8 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19 7.5v3m0 0v3m0-3h3m-3 0h-3m-2.25-4.125a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zM4 19.235v-.11a6.375 6.375 0 0112.75 0v.109A12.318 12.318 0 0110.374 21c-2.331 0-4.512-.645-6.374-1.766z" />
+        </svg>
+        <h1 class="mt-4 text-3xl font-bold text-gray-900">Create Your Account</h1>
+        <p class="mt-2 text-sm text-gray-500">
+            Welcome to Algo4all! Please Register with your Mobile Number.
+        </p>
+
+        <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+            <div class="mt-6">
+                {% for category, message in messages %}
+                    <div class="rounded-md bg-red-50 p-4" role="alert">
+                        <p class="text-sm font-medium text-red-800">{{ message }}</p>
+                    </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        {% endwith %}
+
+        <!-- Registration Form -->
+        <form method="POST" action="{{ url_for('auth.register') }}" class="mt-8">
+            <!-- Mobile Number Field (pre-filled and read-only for security) -->
+            <div>
+                <label for="mobile_number" class="text-sm font-semibold text-gray-600">Mobile Number</label>
+                <input id="mobile_number" name="mobile_number" type="tel" readonly
+                       value="{{ mobile_number or '' }}"
+                       class="mt-1 block w-full rounded-md border-0 bg-gray-200 px-4 py-3 text-gray-700 shadow-sm ring-1 ring-inset ring-gray-300">
+            </div>
+
+            <!-- Submit Button -->
+            <div>
+                <button type="submit" class="mt-6 flex w-full justify-center rounded-md bg-gradient-to-r from-blue-600 to-purple-600 px-4 py-3 text-base font-semibold text-white shadow-sm hover:opacity-90">
+                    Let's Start!
+                </button>
+            </div>
+        </form>
+
+    </div>
+</div>
+{% endblock %}

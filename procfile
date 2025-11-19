@@ -1,0 +1,4 @@
+# This tells the hosting service how to run the web process.
+# It uses the Gunicorn server and points to the application factory 'create_app' in run.py.
+# --config gunicorn.conf.py tells it to use our custom performance settings.
+web: gunicorn --config gunicorn.conf.py "run:create_app()"

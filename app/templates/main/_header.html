@@ -1,0 +1,32 @@
+<!-- app/templates/main/_header.html -->
+<header class="flex items-center justify-between bg-blue-100 p-2 shadow-md">
+    
+    <!-- Left: Logo -->
+    <div class="w-1/4 flex-shrink-0">
+        <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Algo4All Logo" class="h-12 w-auto">
+    </div>
+    
+    <!-- Center: Welcome Info -->
+    <div class="w-1/2 flex-grow text-center">
+        <!-- The user's name is bold and prominent -->
+        <h1 class="break-words text-xs font-bold text-gray-900">
+            Welcome: <br class="sm:hidden"> {{ current_user.name or 'Valued User' }}
+        </h1>
+        
+        <!-- ============================================ -->
+        <!-- === ADD THIS LINE TO DISPLAY THE USER ID   === -->
+        <!-- ============================================ -->
+        <p class="mt-1 text-xs font-semibold text-gray-700">User ID: {{ current_user.id }}</p>
+
+        <!-- The market times are smaller -->
+        <p class="mt-1 text-xs text-gray-600">Market Time: 09-15 to 15-30</p>
+        <p class="text-xs text-gray-600">Trading Time: 09-36 to 15-15</p>
+    </div>
+    
+    <!-- Right: Logout Button -->
+    <div class="w-1/4 flex-shrink-0 text-right">
+        <a href="{{ url_for('auth.logout') }}" class="inline-block rounded-lg bg-red-600 px-5 py-2 text-sm font-bold text-white shadow-lg transition hover:bg-red-700">
+            Logout
+        </a>
+    </div>
+</header>

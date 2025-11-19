@@ -1,0 +1,22 @@
+[Unit]
+Description=Gunicorn instance to serve ALGO4ALL
+After=network.target
+
+[Service]
+User=jayendra
+Group=jayendra
+WorkingDirectory=/mnt/c/Users/Jayendra/desktop/ALGO4ALL
+Environment="PATH=/mnt/c/Users/Jayendra/desktop/ALGO4ALL/venv/bin"
+ExecStart=/mnt/c/Users/Jayendra/desktop/ALGO4ALL/venv/bin/gunicorn \
+    --worker-class geventwebsocket.gunicorn.workers.GeventWebSocketWorker \
+    --workers 4 \
+    --bind 127.0.0.1:8000 \
+    --timeout 120 \
+    --log-level debug \
+    wsgi:application
+
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

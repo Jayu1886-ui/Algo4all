@@ -1,0 +1,67 @@
+<!-- app/templates/main/orders.html -->
+{% extends "base.html" %}
+
+{% block title %}Orders{% endblock %}
+
+{% block content %}
+<!-- Main container with a clean white background -->
+<div class="min-h-screen bg-white">
+    
+
+    <!-- Main Content Area -->
+    <div class="p-4">
+        
+        <!-- Flash Messages (for API errors, etc.) -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="mb-4">
+                    {% for category, message in messages %}
+                    <div class="rounded-md p-4 text-sm font-semibold {{ 'bg-red-100 text-red-700' if category == 'error' else 'bg-blue-100 text-blue-700' }}" role="alert">
+                        {{ message }}
+                    </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <!-- Order List -->
+        <div class="space-y-6">
+            {% if orders %}
+                {% for order in orders %}
+                    <div class="font-sans">
+                        <!-- Order Title -->
+                        <h2 class="text-3xl font-bold text-blue-900">
+                            Order {{ loop.index }} :
+                        </h2>
+                        
+                        <!-- Order Details -->
+                        <!-- The `pl-4` adds a left padding to indent the details under the title -->
+                        <div class="mt-2 pl-4 text-base font-medium text-black space-y-1">
+                            <p>Status : <span class="font-bold">{{ order.status | title | replace('_', ' ') }}</span></p>
+                            <p>Time Stamp : <span class="font-bold">{{ order.order_timestamp or 'N/A' }}</span></p>
+                            <p>Instru.Token : <span class="font-bold">{{ order.tradingsymbol or 'N/A' }}</span></p>
+                            <p>Trigger Price : <span class="font-bold">{{ order.trigger_price or 'N/A' }}</span></p>
+                            <p>Quantity : <span class="font-bold">{{ order.quantity or 'N/A' }}</span></p>
+                            <p>Order Type : <span class="font-bold">{{ order.order_type | title }}</span></p>
+                            <p>Order id : <span class="font-bold">{{ order.order_id or 'N/A' }}</span></p>
+                            <p>Transaction Type : <span class="font-bold">{{ order.transaction_type or 'N/A' }}</span></p>
+                        </div>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <!-- Message for when there are no orders -->
+                <div class="pt-16 text-center text-gray-500">
+                    <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <h3 class="mt-2 text-sm font-medium text-gray-900">No Order History</h3>
+                    <p class="mt-1 text-sm text-gray-500">No orders have been placed today.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Footer: Sticky navigation bar -->
+{% set active_page = 'orders' %}
+{% endblock %}

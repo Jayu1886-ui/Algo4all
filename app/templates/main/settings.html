@@ -1,0 +1,96 @@
+<!-- app/templates/main/settings.html -->
+{% extends "base.html" %}
+
+{% block title %}Settings{% endblock %}
+
+{% block content %}
+<!-- Main container with the light gray/silver background -->
+<div class="min-h-screen bg-gray-200">
+
+
+    <!-- Main Content Area: A single column of setting cards -->
+    <div class="space-y-3 p-3">
+        
+        <!-- Flash Messages (for 'Quantity Saved', etc.) -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                <div class="rounded-lg p-3 text-center text-sm font-semibold {{ 'bg-red-200 text-red-800' if category == 'error' else 'bg-green-200 text-green-800' }}" role="alert">
+                    {{ message }}
+                </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- 1. Algorithm & ON/OFF Setting Card -->
+        <div class="grid grid-cols-2 items-stretch gap-3">
+            <div class="flex items-center justify-center rounded-full bg-black p-4 text-center text-xl font-bold text-white shadow-lg">
+                Algorithm
+            </div>
+            <!-- This form toggles the user's personal trading status -->
+            <form action="{{ url_for('main.settings') }}" method="POST">
+                <input type="hidden" name="action" value="toggle_trading">
+                <button type="submit" class="h-full w-full rounded-full p-4 text-xl font-bold text-white shadow-lg 
+                    {% if current_user.is_trading_on %}
+                        bg-gradient-to-r from-green-500 to-blue-600
+                    {% else %}
+                        bg-gray-600
+                    {% endif %}">
+                    {% if current_user.is_trading_on %} ON {% else %} OFF {% endif %}
+                </button>
+            </form>
+        </div>
+
+        <!-- 2. Quantity Setting Card -->
+        <form action="{{ url_for('main.settings') }}" method="POST" class="space-y-3">
+            <input type="hidden" name="action" value="update_quantity">
+            <div class="grid grid-cols-2 items-stretch gap-3">
+                <div class="rounded-full bg-black p-3 text-center text-white shadow-lg">
+                    <p class="text-xl font-bold">Quantity Setting</p>
+                    <p class="text-xs">1 Lot = 75 Qty</p> <!-- Adjusted as per standard lot size -->
+                </div>
+                <div class="flex items-center">
+                    <input type="number" name="quantity" value="{{ current_user.quantity or 75 }}" step="75" min="75" class="h-full w-full rounded-full border-none bg-gray-800 text-center text-xl font-bold text-white">
+                </div>
+            </div>
+            <button type="submit" class="w-full rounded-full bg-blue-600 py-2 text-lg font-semibold text-white shadow-lg">Save Quantity</button>
+        </form>
+        
+        <!-- 3. Subscription Card -->
+        <div class="grid grid-cols-2 items-center gap-3">
+            <div class="flex h-full flex-col justify-between rounded-2xl bg-black p-4 text-center shadow-lg">
+                <p class="text-xl font-bold text-yellow-500 underline">Subscription</p>
+                <a href="upi://pay?pa=jkdodiyajd-3@okhdfcbank&pn=Algo4all&am=599.00&cu=INR&tn=Algo4all%20fees" class="mt-2 block rounded-full bg-blue-600 py-3 text-2xl font-bold text-white shadow-md">
+                    PAY:599
+                </a>
+            </div>
+            <div class="rounded-lg bg-white p-3 shadow-lg">
+                <img src="{{ url_for('static', filename='images/qr_code.png') }}" alt="Payment QR Code" class="h-full w-full object-contain">
+            </div>
+        </div>
+
+        <!-- 4. Customer Care Card -->
+        <div class="space-y-2 rounded-2xl bg-black p-4 text-center shadow-lg">
+            <p class="text-xl font-bold text-yellow-400 underline">Customer care</p>
+            <div class="flex items-center justify-center space-x-2 text-white">
+                <svg class="h-5 w-5 text-green-400" fill="currentColor" viewBox="0 0 20 20"><path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z"></path></svg>
+                <p class="text-base">Mobile No : 94 84 77 97 67</p>
+            </div>
+             <div class="flex items-center justify-center space-x-2 text-white">
+                <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20"><path d="M2.003 5.884L10 2.25l7.997 3.634A1 1 0 0117 6.912V14.5a1 1 0 01-1.003.997H4.003A1 1 0 013 14.5V6.912a1 1 0 01-.997-1.028zM15 5.145L10 7.554 5 5.145 10 3l5 2.145z"></path></svg>
+                <p class="text-base">E-mail: info.algo4all@gmail.com</p>
+            </div>
+        </div>
+
+        <!-- 5. Main Logout Button -->
+        <div class="pt-2">
+             <a href="{{ url_for('auth.logout') }}" class="block w-4/5 mx-auto rounded-full bg-red-700 py-3 text-center text-2xl font-bold text-white shadow-lg">
+                LOGOUT
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Bottom Navigation Bar -->
+{% set active_page = 'settings' %}
+{% endblock %}

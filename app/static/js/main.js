@@ -34,7 +34,7 @@ document.addEventListener("DOMContentLoaded", () => {
                         }
                         formattedValue = numValue.toFixed(2); // PnL is always 2 decimal places
                     } else {
-                         formattedValue = '---.--';
+                        formattedValue = '---.--';
                     }
                 } else if (isPrice) {
                     const numValue = parseFloat(value);
@@ -100,7 +100,7 @@ document.addEventListener("DOMContentLoaded", () => {
             if (atmPutKeyEl) atmPutKeyEl.innerText = optionMeta.atm_put?.instrument_key || '';
         }
         
-        // --- 4. ACTIVE TRADE AND PNL ---
+        // --- 4. ACTIVE TRADE AND PNL (MODIFIED TO ADD SL/TP) ---
         // Payload structure: data.active_trade
         const activeTrade = data.active_trade;
         const activeTradeSection = document.getElementById('active-trade-section');
@@ -112,8 +112,12 @@ document.addEventListener("DOMContentLoaded", () => {
             updateText('active-trade-entry-price', activeTrade.entry_price, true);
             updateText('active-trade-instrument', activeTrade.type === 'CALL' ? `CALL ${optionMeta?.atm_strike}` : `PUT ${optionMeta?.atm_strike}`);
 
+            // NEW: Display Stop Loss and Target Price
+            updateText('active-trade-stoploss', activeTrade.stoploss_price, true);
+            updateText('active-trade-target', activeTrade.target_price, true);
+
             // PnL/LTP data must be sent by the backend's manage_orders task 
-            const livePnl = activeTrade.live_pnl;             
+            const livePnl = activeTrade.live_pnl;             
             
             updateText('live-pnl', livePnl, false, true); // PnL formatting
             
@@ -137,11 +141,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // 2. Socket.IO Setup
-    const socket = io("https://algo4all.in", {
-    transports: ["websocket", "polling"]
-});
-
-
+    const socket = io({transports: ["websocket", "polling"]});
 
 
     socket.on('connect', () => {
@@ -187,27 +187,27 @@ document.addEventListener("DOMContentLoaded", () => {
              event.preventDefault(); // Prevent default form submission
              const userIsSure = window.confirm("Are you sure you want to perform an EMERGENCY SQUARE OFF? This action cannot be undone.");
              if (userIsSure) {
-                const submitButton = squareOffForm.querySelector('button[type="submit"]');
-                if (submitButton) {
-                    submitButton.disabled = true;
-                    submitButton.textContent = "Processing...";
-                }
-                // NOTE: Implement a dedicated Flask route /api/square-off 
-                // that calls the order manager task's square-off logic.
-                fetch('/api/square-off', { method: 'POST' }) 
-                    .then(response => response.json())
-                    .then(data => {
-                        alert(data.message || "Square-off complete.");
-                        submitButton.disabled = false;
-                        submitButton.textContent = "EMERGENCY SQUARE OFF";
-                    })
-                    .catch(error => {
-                        console.error("Square-off failed:", error);
-                        alert("Square-off failed. Check server logs.");
-                        submitButton.disabled = false;
-                        submitButton.textContent = "EMERGENCY SQUARE OFF";
-                    });
-            }
+                 const submitButton = squareOffForm.querySelector('button[type="submit"]');
+                 if (submitButton) {
+                     submitButton.disabled = true;
+                     submitButton.textContent = "Processing...";
+                 }
+                 // NOTE: Implement a dedicated Flask route /api/square-off 
+                 // that calls the order manager task's square-off logic.
+                 fetch('/api/square-off', { method: 'POST' }) 
+                     .then(response => response.json())
+                     .then(data => {
+                         alert(data.message || "Square-off complete.");
+                         submitButton.disabled = false;
+                         submitButton.textContent = "EMERGENCY SQUARE OFF";
+                     })
+                     .catch(error => {
+                         console.error("Square-off failed:", error);
+                         alert("Square-off failed. Check server logs.");
+                         submitButton.disabled = false;
+                         submitButton.textContent = "EMERGENCY SQUARE OFF";
+                     });
+             }
         });
     }
 

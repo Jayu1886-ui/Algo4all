@@ -6,7 +6,7 @@ services:
     runtime: python
     name: algo4all-web
     # ⚠️ REPLACE with your actual repository URL
-    repo: [YOUR_GITHUB_REPO_URL] 
+    repo: https://github.com/Jayu1886-ui/ALGO4ALL 
     branch: main
     # Use 'standard' plan for better performance/concurrency for the web server
     plan: standard
@@ -58,7 +58,7 @@ services:
   - type: worker
     runtime: python
     name: algo4all-celery-worker
-    repo: [YOUR_GITHUB_REPO_URL] # Same repository
+    repo: https://github.com/Jayu1886-ui/ALGO4ALL
     branch: main
     plan: standard # Dedicated worker resources
     region: frankfurt 
@@ -117,7 +117,7 @@ services:
   - type: worker
     runtime: python
     name: algo4all-celery-beat
-    repo: [YOUR_GITHUB_REPO_URL] 
+    repo: https://github.com/Jayu1886-ui/ALGO4ALL
     branch: main
     plan: starter # Can use a smaller plan since it's just a scheduler
     region: frankfurt 
@@ -173,7 +173,7 @@ services:
   - type: worker
     runtime: python
     name: algo4all-streamer
-    repo: [YOUR_GITHUB_REPO_URL]
+    repo: https://github.com/Jayu1886-ui/ALGO4ALL
     branch: main
     plan: starter # Continuous, but low resource usage
     region: frankfurt
@@ -245,3 +245,4 @@ databases:
     plan: starter
     region: frankfurt
     ipAllowList: []
+

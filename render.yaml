@@ -1,101 +1,247 @@
-# render.yaml for ALGO4ALL deployment
-# ==========================================================
-# This config deploys:
-# 1. Web service (Flask + Socket.IO via Gunicorn)
-# 2. Redis (managed)
-# 3. PostgreSQL (managed)
-# 4. Celery Worker
-# 5. Celery Beat
-# 6. Market Data Streamer
-# ==========================================================
+# render.yaml for ALGO4ALL Automated Trading Platform
 
-# -----------------------------
-# 1️⃣ Web Service
-# -----------------------------
 services:
+  # --- 1. Main Flask Web Service (Handles HTTP, SocketIO, User Interaction) ---
   - type: web
+    runtime: python
     name: algo4all-web
-    env: python
-    plan: free
-    region: oregon
-    buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn -c gunicorn.conf.py wsgi:application
+    # ⚠️ REPLACE with your actual repository URL
+    repo: [YOUR_GITHUB_REPO_URL] 
+    branch: main
+    # Use 'standard' plan for better performance/concurrency for the web server
+    plan: standard
+    region: frankfurt # Choose your preferred region
+    
+    # ⚠️ Use your gunicorn.conf.py and specify the wsgi application entry point
+    buildCommand: |
+      pip install -r requirements.txt
+    startCommand: |
+      gunicorn -c gunicorn.conf.py wsgi:application
+      
+    healthCheckPath: /
+    
     envVars:
-      - key: FLASK_ENV
-        value: production
-      - key: REDIS_URL
-        value: redis://algo4all-redis:6379/0
+      # Automatically set by Render for the main DB connection
       - key: DATABASE_URL
-        value: postgres://algo4all-db:5432/algo4all
+        fromDatabase:
+          name: algo4all-db
+          property: connectionString
+      
+      # Automatically set by Render for the Redis cache/broker connection
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: algo4all-cache
+          property: connectionString
+      
+      # Securely managed static credentials (from your .env)
+      - key: FERNET_KEY
+        value: D5zUftmYldWzvXpdFkWLxZeyXKYJv66Gn1kTnPCu3qg=
+      - key: ENCRYPTION_KEY
+        value: D5zUftmYldWzvXpdFkWLxZeyXKYJv66Gn1kTnPCu3qg=
       - key: SECRET_KEY
-        value: "your-secret-key"
-      - key: UPSTOX_ACCESS_TOKEN_FILE
-        value: access_token.txt
-      - key: OTHER_ENV_VAR
-        value: value_from_your_dotenv
-        allowedIps:
-      - 0.0.0.0/0
-
-# -----------------------------
-# 2️⃣ Redis Service (Managed)
-# -----------------------------
-  - type: redis
-    name: algo4all-redis
-    plan: free
-    region: oregon
+        generateValue: true # Generate a fresh secret key on Render
+      - key: OWNER_API_KEY
+        value: "30c68b51-a0a1-4425-8b96-8d5fd1dc5a85"
+      - key: OWNER_API_SECRET
+        value: "1usslyntpd"
+      - key: OWNER_USER_ID
+        value: "GLOBAL_TRADER"
+      - key: UPSTOX_REDIRECT_URI
+        value: "https://algo4all.in/auth/callback"
+      
+      # STREAMER_ACCESS_TOKEN_FILE is not needed on the web server side
+      # and should be handled by the Streamer service or a database/cache lookup.
 
 
-
-# -----------------------------
-# 4️⃣ Celery Worker
-# -----------------------------
+  # --- 2. Celery Worker Service (Core Trading Logic) ---
   - type: worker
+    runtime: python
     name: algo4all-celery-worker
-    env: python
-    plan: free
-    region: oregon
-    buildCommand: pip install -r requirements.txt
-    startCommand: celery -A celery_app worker -P gevent -c 8 --loglevel=INFO
-    envVars:
-      - key: REDIS_URL
-        value: redis://algo4all-redis:6379/0
-      - key: DATABASE_URL
-        value: postgres://algo4all-db:5432/algo4all
-    allowedIps:
-      - 0.0.0.0/0
+    repo: [YOUR_GITHUB_REPO_URL] # Same repository
+    branch: main
+    plan: standard # Dedicated worker resources
+    region: frankfurt 
+    
+    # ⚠️ IMPORTANT: Launching Celery with gevent pool as per your bash script
+    buildCommand: |
+      pip install -r requirements.txt
+    startCommand: |
+      # Clears stale beat schedule and starts the worker
+      rm -f celerybeat-schedule*
+      celery -A celery_app worker -P gevent -c 8 --loglevel=INFO
 
-# -----------------------------
-# 5️⃣ Celery Beat
-# -----------------------------
+    # Inherit necessary credentials from the web service
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: algo4all-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: algo4all-cache
+          property: connectionString
+      - key: SECRET_KEY
+        fromService:
+          type: web
+          name: algo4all-web
+          envVarKey: SECRET_KEY
+      - key: OWNER_API_KEY
+        fromService:
+          type: web
+          name: algo4all-web
+          envVarKey: OWNER_API_KEY
+      - key: OWNER_API_SECRET
+        fromService:
+          type: web
+          name: algo4all-web
+          envVarKey: OWNER_API_SECRET
+      - key: FERNET_KEY
+        fromService:
+          type: web
+          name: algo4all-web
+          envVarKey: FERNET_KEY
+      - key: ENCRYPTION_KEY
+        fromService:
+          type: web
+          name: algo4all-web
+          envVarKey: ENCRYPTION_KEY
+      - key: OWNER_USER_ID
+        fromService:
+          type: web
+          name: algo4all-web
+          envVarKey: OWNER_USER_ID
+
+  # --- 3. Celery Beat Service (Task Scheduler) ---
   - type: worker
+    runtime: python
     name: algo4all-celery-beat
-    env: python
-    plan: free
-    region: oregon
-    buildCommand: pip install -r requirements.txt
-    startCommand: celery -A celery_app beat --loglevel=INFO
-    envVars:
-      - key: REDIS_URL
-        value: redis://algo4all-redis:6379/0
-      - key: DATABASE_URL
-        value: postgres://algo4all-db:5432/algo4all
+    repo: [YOUR_GITHUB_REPO_URL] 
+    branch: main
+    plan: starter # Can use a smaller plan since it's just a scheduler
+    region: frankfurt 
 
-# -----------------------------
-# 6️⃣ Market Data Streamer
-# -----------------------------
+    buildCommand: |
+      pip install -r requirements.txt
+    startCommand: |
+      celery -A celery_app beat --loglevel=INFO
+
+    # Inherit ALL same env vars as the Worker Service
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: algo4all-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: algo4all-cache
+          property: connectionString
+      - key: SECRET_KEY
+        fromService:
+          type: web
+          name: algo4all-web
+          envVarKey: SECRET_KEY
+      - key: OWNER_API_KEY
+        fromService:
+          type: web
+          name: algo4all-web
+          envVarKey: OWNER_API_KEY
+      - key: OWNER_API_SECRET
+        fromService:
+          type: web
+          name: algo4all-web
+          envVarKey: OWNER_API_SECRET
+      - key: FERNET_KEY
+        fromService:
+          type: web
+          name: algo4all-web
+          envVarKey: FERNET_KEY
+      - key: ENCRYPTION_KEY
+        fromService:
+          type: web
+          name: algo4all-web
+          envVarKey: ENCRYPTION_KEY
+      - key: OWNER_USER_ID
+        fromService:
+          type: web
+          name: algo4all-web
+          envVarKey: OWNER_USER_ID
+
+  # --- 4. Market Data Streamer Service ---
   - type: worker
+    runtime: python
     name: algo4all-streamer
-    env: python
-    plan: free
-    region: oregon
-    buildCommand: pip install -r requirements.txt
-    startCommand: python -m app.tasks.streamer.streamer
+    repo: [YOUR_GITHUB_REPO_URL]
+    branch: main
+    plan: starter # Continuous, but low resource usage
+    region: frankfurt
+
+    buildCommand: |
+      pip install -r requirements.txt
+    startCommand: |
+      python -m app.tasks.streamer.streamer
+
+    # Inherit ALL same env vars as the Worker Service
     envVars:
-      - key: REDIS_URL
-        value: redis://algo4all-redis:6379/0
       - key: DATABASE_URL
-        value: postgres://algo4all-db:5432/algo4all
-      - key: UPSTOX_ACCESS_TOKEN_FILE
-        value: access_token.txt
+        fromDatabase:
+          name: algo4all-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: keyvalue
+          name: algo4all-cache
+          property: connectionString
+      - key: SECRET_KEY
+        fromService:
+          type: web
+          name: algo4all-web
+          envVarKey: SECRET_KEY
+      - key: OWNER_API_KEY
+        fromService:
+          type: web
+          name: algo4all-web
+          envVarKey: OWNER_API_KEY
+      - key: OWNER_API_SECRET
+        fromService:
+          type: web
+          name: algo4all-web
+          envVarKey: OWNER_API_SECRET
+      - key: FERNET_KEY
+        fromService:
+          type: web
+          name: algo4all-web
+          envVarKey: FERNET_KEY
+      - key: ENCRYPTION_KEY
+        fromService:
+          type: web
+          name: algo4all-web
+          envVarKey: ENCRYPTION_KEY
+      - key: OWNER_USER_ID
+        fromService:
+          type: web
+          name: algo4all-web
+          envVarKey: OWNER_USER_ID
+      # Handle the STREAMER_ACCESS_TOKEN_FILE setting. 
+      # Since you're not using a file on Render, the streamer script MUST be modified 
+      # to pull the token from the database or cache using OWNER_USER_ID.
 
+  # --- 5. Redis Cache Service (Celery Broker & Cache) ---
+  - type: keyvalue
+    name: algo4all-cache
+    plan: starter
+    ipAllowList:
+      - source: 0.0.0.0/0
+        description: internal services
+    maxmemoryPolicy: allkeys-lru
 
+# --- 6. PostgreSQL Database ---
+databases:
+  - name: algo4all-db
+    databaseName: algo4all_db
+    user: algo_user
+    plan: starter
+    region: frankfurt
+    ipAllowList: []

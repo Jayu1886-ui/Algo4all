@@ -1,4 +1,4 @@
-# In file: app/tasks/task_order_manager.py (FINAL CORRECTED & COMPATIBLE)
+# app/tasks/task_order_manager.py (FINAL — copy & paste ready)
 
 import json
 import datetime
@@ -77,7 +77,7 @@ def place_market_order(instrument_token, quantity, transaction_type, headers):
         response.raise_for_status()
         order_id = response.json().get("data", {}).get("order_id")
         print(f"    -> ✅ Order placed successfully. ID: {order_id}")
-        return order_id
+        return response.json()
     except RequestException as e:
         if e.response is not None:
             try:
@@ -123,6 +123,7 @@ def manage_orders(self, user_id: int):
     """
     Core Order Management Task.
     Emits market_state to frontend and executes trades when signal+option meta exist.
+    Also manages active trade SL/TP and square-off requests.
     """
     try:
         user = db.session.get(User, user_id)
@@ -180,6 +181,7 @@ def manage_orders(self, user_id: int):
         # Retrieve active trade if any (cache uses same 'cache' instance)
         active_trade_key = f"active_trade_{user.id}"
         raw_trade_json = _normalize_cached_value(cache.get(active_trade_key))
+        active_trade_data = None
         if raw_trade_json:
             try:
                 active_trade_data = json.loads(raw_trade_json)
@@ -197,6 +199,49 @@ def manage_orders(self, user_id: int):
             socketio.emit("market_update", market_state, room=str(user.id))
         except Exception as e:
             print(f"--- [TASK order_mgmt: {user_id}] Failed to emit market_update: {e}")
+
+        # ---- Square-off handler ----
+        # Key set by your frontend / main.py when user presses square-off button:
+        # f"square_off_request_user_{user.id}"
+        sq_key = f"square_off_request_user_{user.id}"
+        if cache.get(sq_key):
+            print(f"--- [TASK order_mgmt: {user.id}] Square-off requested ---")
+            # clear the flag
+            try:
+                cache.delete(sq_key)
+            except Exception:
+                pass
+
+            # If any active trade, exit it immediately (market exit)
+            raw_trade = _normalize_cached_value(cache.get(active_trade_key))
+            if raw_trade:
+                try:
+                    t = json.loads(raw_trade)
+                    # For both CALL and PUT we exit by SELLing what we bought
+                    exit_side = "SELL"
+                    print(f"    -> Square-off: exiting instrument {t.get('instrument_token')} qty {t.get('quantity')}")
+                    place_market_order(t.get("instrument_token"), t.get("quantity"), exit_side, headers)
+                except Exception as e:
+                    print(f"    -> Square-off: failed to exit active trade: {e}")
+                try:
+                    cache.delete(active_trade_key)
+                except Exception:
+                    pass
+
+            # notify and return (skip new trades while square-off processed)
+            try:
+                socketio.emit("trade_notification", {"message": "User requested square-off. Exited active trades."}, room=str(user.id))
+            except Exception:
+                pass
+
+            return
+
+        # If there's an active trade, let manage_active_trade handle SL/TP exits
+        if active_trade_data:
+            try:
+                manage_active_trade(active_trade_data, market_state, user, headers, active_trade_key)
+            except Exception as e:
+                print(f"--- [TASK order_mgmt: {user_id}] Error in manage_active_trade: {e}")
 
         # --- Decide to trade only if both signal and option meta are available ---
         if not signal_frame or not option_meta:
@@ -225,41 +270,64 @@ def manage_orders(self, user_id: int):
 
 # --- 3️⃣ DECISION LOGIC ---
 def decide_and_execute_trade(market_state, user, headers, active_trade_key):
-    """Decides whether to enter a CALL or PUT trade."""
+    """Decides whether to enter a CALL or PUT trade based on SMA rules."""
+
     now = datetime.datetime.now().time()
     if not (datetime.time(9, 30) <= now <= datetime.time(15, 15)):
         return
 
-    overall_trend = market_state.get("overall_market_trend")
-    trade_meta = market_state.get("final_trade_instruments", {})
+    # Read Nifty values (ensure numeric)
+    nifty_signal_data = market_state.get("indices_data", {}).get(NIFTY_50_NAME, {}) or {}
 
-    target_option, trade_type = None, None
-    if overall_trend == "CALL BUY" and trade_meta.get("atm_call"):
-        target_option = trade_meta["atm_call"]
-        trade_type = "CALL"
-    elif overall_trend == "PUT BUY" and trade_meta.get("atm_put"):
-        target_option = trade_meta["atm_put"]
-        trade_type = "PUT"
+    def _to_float(v):
+        try:
+            return float(v)
+        except Exception:
+            return None
 
-    if not target_option:
+    ltp = _to_float(nifty_signal_data.get("ltp"))
+    sma10 = _to_float(nifty_signal_data.get("sma_10"))
+    sma25 = _to_float(nifty_signal_data.get("sma_25"))
+    sma50 = _to_float(nifty_signal_data.get("sma_50"))
+    sma100 = _to_float(nifty_signal_data.get("sma_100"))
+
+    # Need all values to be present
+    if None in (ltp, sma10, sma25, sma50, sma100):
+        print("    -> Missing LTP/SMA values; skipping trade decision.")
         return
 
-    # Limit daily trades per user
-    today = datetime.date.today().isoformat()
-    count_key = f"{trade_type.lower()}_trade_count_{user.id}_{today}"
-    current_trades_raw = cache.get(count_key)
-    current_trades = 0
-    if current_trades_raw:
-        try:
-            if isinstance(current_trades_raw, bytes):
-                current_trades = int(current_trades_raw.decode("utf-8"))
-            else:
-                current_trades = int(current_trades_raw)
-        except Exception:
-            current_trades = 0
+    trade_meta = market_state.get("final_trade_instruments", {}) or {}
 
-    if current_trades >= 4:
-        print(f"    -> Daily trade limit reached for {trade_type} trades.")
+    target_option, trade_type = None, None
+
+    # --- 1) CALL BUY criteria ---
+    # ltp > all sma10,sma25,sma50,sma100 AND sma10 > sma25,sma50,sma100
+    if (
+        ltp > sma10 and ltp > sma25 and ltp > sma50 and ltp > sma100
+        and sma10 > sma25 and sma10 > sma50 and sma10 > sma100
+    ):
+        if trade_meta.get("atm_call"):
+            target_option = trade_meta["atm_call"]
+            trade_type = "CALL"
+
+    # --- 2) PUT BUY criteria ---
+    # ltp < all sma10,sma25,sma50,sma100 AND sma10 < sma25,sma50,sma100
+    elif (
+        ltp < sma10 and ltp < sma25 and ltp < sma50 and ltp < sma100
+        and sma10 < sma25 and sma10 < sma50 and sma10 < sma100
+    ):
+        if trade_meta.get("atm_put"):
+            target_option = trade_meta["atm_put"]
+            trade_type = "PUT"
+
+    if not target_option or not trade_type:
+        # No entry condition met
+        return
+
+    # Prevent entering if there is already an active trade
+    raw_active = _normalize_cached_value(cache.get(active_trade_key))
+    if raw_active:
+        print("    -> Active trade exists; skipping new entry.")
         return
 
     instrument_token = target_option.get("instrument_key")
@@ -267,49 +335,99 @@ def decide_and_execute_trade(market_state, user, headers, active_trade_key):
         print("    -> ⚠️ No instrument_token in target_option. Aborting trade.")
         return
 
-    entry_order_id = place_market_order(instrument_token, user.quantity, "BUY", headers)
-    if not entry_order_id:
+    # Place entry BUY order for both CALL and PUT strategies (we BUY options)
+    entry_order_resp = place_market_order(instrument_token, user.quantity, "BUY", headers)
+    if not entry_order_resp:
+        print("    -> Entry order failed.")
         return
 
-    entry_price = get_order_fill_price(entry_order_id, user.access_token)
-    if not entry_price:
-        return
-
-    # Update trade count in cache
+    # try to get order_id from response
+    entry_order_id = None
     try:
-        cache.set(count_key, str(current_trades + 1), timeout=86400)
+        entry_order_id = entry_order_resp.get("data", {}).get("order_id")
     except Exception:
-        pass
+        entry_order_id = None
+
+    if not entry_order_id:
+        print("    -> No entry order_id returned; attempting to proceed cautiously.")
+        # Even if order_id missing, try to continue by fetching LTP for instrument as approximate entry price
+        # but prefer to get fill via get_order_fill_price if possible.
+
+    entry_price = None
+    if entry_order_id:
+        entry_price = get_order_fill_price(entry_order_id, user.access_token)
+
+    # fallback: use last traded price for the instrument if available
+    if not entry_price:
+        try:
+            entry_price = float(get_live_ltp(instrument_token) or 0)
+        except Exception:
+            entry_price = None
+
+    if not entry_price or entry_price <= 0:
+        print("    -> Could not determine entry price; aborting trade book-keeping.")
+        return
+
+    # --- 3) STOPLOSS & 4) TARGET ---
+    # Stoploss: 15 points below entry price (absolute)
+    stoploss_price = float(entry_price) - 15.0
+    # Target: 30 points above entry price
+    target_price = float(entry_price) + 30.0
 
     trade_details = {
         "type": trade_type,
         "instrument_token": instrument_token,
         "quantity": user.quantity,
-        "entry_price": entry_price,
+        "entry_price": float(entry_price),
+        "stoploss_price": stoploss_price,
+        "target_price": target_price,
         "entry_order_id": entry_order_id,
         "entry_time": datetime.datetime.now().isoformat(),
     }
+
+    # Save active trade into cache
     try:
         cache.set(active_trade_key, json.dumps(trade_details), timeout=86400)
     except Exception:
-        pass
+        print("    -> Warning: failed to cache active trade.")
 
     # Notify clients
     try:
-        socketio.emit("trade_notification", {"message": f"{trade_type} Trade Entered!"}, room=str(user.id))
+        socketio.emit("trade_notification", {"message": f"{trade_type} Trade Entered! Entry: {entry_price}, SL: {stoploss_price}, TP: {target_price}"}, room=str(user.id))
+    except Exception:
+        pass
+
+    # Update daily trade count (retain existing behavior)
+    today = datetime.date.today().isoformat()
+    count_key = f"{trade_type.lower()}_trade_count_{user.id}_{today}"
+    try:
+        current_trades_raw = cache.get(count_key)
+        current_trades = 0
+        if current_trades_raw:
+            if isinstance(current_trades_raw, bytes):
+                current_trades = int(current_trades_raw.decode("utf-8"))
+            else:
+                current_trades = int(current_trades_raw)
+        cache.set(count_key, str(current_trades + 1), timeout=86400)
     except Exception:
         pass
 
 
 # --- 4️⃣ TRADE MANAGEMENT LOGIC ---
 def manage_active_trade(trade, market_state, user, headers, active_trade_key):
-    """Manages open position based on SL/TP/Time."""
+    """Manages open position based on SL/TP/Auto-squareoff/Time and square-off flag."""
+
     now = datetime.datetime.now().time()
 
-    # Auto square-off
+    # Auto square-off at end of day
     if now >= datetime.time(15, 15):
-        exit_side = "SELL" if trade["type"] == "CALL" else "BUY"
-        place_market_order(trade["instrument_token"], trade["quantity"], exit_side, headers)
+        print("    -> Auto square-off time reached. Exiting position.")
+        # For both CALL and PUT (we opened via BUY), exit by SELL
+        exit_side = "SELL"
+        try:
+            place_market_order(trade["instrument_token"], trade["quantity"], exit_side, headers)
+        except Exception as e:
+            print(f"    -> Auto exit failed: {e}")
         try:
             cache.delete(active_trade_key)
         except Exception:
@@ -320,39 +438,87 @@ def manage_active_trade(trade, market_state, user, headers, active_trade_key):
             pass
         return
 
-    nifty_signal_data = market_state.get("indices_data", {}).get(NIFTY_50_NAME, {}) or {}
-    try:
-        nifty_ltp_float = float(nifty_signal_data.get("ltp")) if nifty_signal_data.get("ltp") is not None else None
-    except Exception:
-        nifty_ltp_float = None
-
-    try:
-        nifty_sma25 = float(nifty_signal_data.get("sma_25")) if nifty_signal_data.get("sma_25") is not None else None
-    except Exception:
-        nifty_sma25 = None
-
-    if not nifty_ltp_float or not nifty_sma25:
-        print("    -> ⚠️ Missing Nifty LTP or SMA25 data for SL check.")
-        return
-
-    is_exit = False
-    reason = None
-    if trade["type"] == "CALL" and nifty_ltp_float < nifty_sma25:
-        is_exit, reason = True, "Nifty LTP < SMA25 (CALL SL)"
-    elif trade["type"] == "PUT" and nifty_ltp_float > nifty_sma25:
-        is_exit, reason = True, "Nifty LTP > SMA25 (PUT SL)"
-
-    if is_exit:
-        exit_side = "SELL" if trade["type"] == "CALL" else "BUY"
-        place_market_order(trade["instrument_token"], trade["quantity"], exit_side, headers)
+    # Square-off request (in case it came after last check)
+    sq_key = f"square_off_request_user_{user.id}"
+    if cache.get(sq_key):
+        print("    -> Square-off request detected inside manage_active_trade.")
+        try:
+            cache.delete(sq_key)
+        except Exception:
+            pass
+        try:
+            place_market_order(trade["instrument_token"], trade["quantity"], "SELL", headers)
+        except Exception:
+            pass
         try:
             cache.delete(active_trade_key)
         except Exception:
             pass
         try:
-            socketio.emit("trade_notification", {"message": f"Exited {trade['type']}: {reason}"}, room=str(user.id))
+            socketio.emit("trade_notification", {"message": "User requested square-off. Exited active trade."}, room=str(user.id))
         except Exception:
             pass
         return
 
+    # Get current LTP for the option instrument (use helper)
+    try:
+        current_ltp = get_live_ltp(trade["instrument_token"])
+        if current_ltp is None:
+            # fallback to index LTP if instrument LTP missing (less ideal)
+            idx = market_state.get("indices_data", {}).get(NIFTY_50_NAME, {}) or {}
+            current_ltp = idx.get("ltp")
+        current_ltp = float(current_ltp)
+    except Exception:
+        print("    -> Could not fetch live LTP for active trade.")
+        return
+
+    try:
+        sl = float(trade.get("stoploss_price"))
+    except Exception:
+        sl = None
+    try:
+        tp = float(trade.get("target_price"))
+    except Exception:
+        tp = None
+
+    # If stoploss/target not present, nothing to manage
+    if sl is None and tp is None:
+        print("    -> No SL/TP defined for active trade.")
+        return
+
+    # Check for SL hit first
+    if sl is not None and current_ltp <= sl:
+        print(f"    -> STOPLOSS hit. LTP: {current_ltp} <= SL: {sl}")
+        try:
+            place_market_order(trade["instrument_token"], trade["quantity"], "SELL", headers)
+        except Exception as e:
+            print(f"    -> Error placing SL exit order: {e}")
+        try:
+            cache.delete(active_trade_key)
+        except Exception:
+            pass
+        try:
+            socketio.emit("trade_notification", {"message": f"STOPLOSS HIT ({sl}). Exited {trade['type']}."}, room=str(user.id))
+        except Exception:
+            pass
+        return
+
+    # Check for TARGET hit
+    if tp is not None and current_ltp >= tp:
+        print(f"    -> TARGET hit. LTP: {current_ltp} >= TP: {tp}")
+        try:
+            place_market_order(trade["instrument_token"], trade["quantity"], "SELL", headers)
+        except Exception as e:
+            print(f"    -> Error placing TARGET exit order: {e}")
+        try:
+            cache.delete(active_trade_key)
+        except Exception:
+            pass
+        try:
+            socketio.emit("trade_notification", {"message": f"TARGET HIT ({tp}). Exited {trade['type']}."}, room=str(user.id))
+        except Exception:
+            pass
+        return
+
+    # No exit condition yet
     print("    -> ✅ Active trade maintained. Waiting for exit signal.")

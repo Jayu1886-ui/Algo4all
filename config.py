@@ -64,7 +64,7 @@ class Config:
     CELERY_BEAT_SCHEDULE = { 
     "fetch-daily-hist": {
         "task": "app.tasks.task_1_fetch_hist.fetch_hist_data",
-        "schedule": 60,
+        "schedule": crontab(hour=9, minute=14, day_of_week='mon-fri'),
         "args":("NSE_INDEX|Nifty 50", "1m")
     },
     "merge-every-30sec": {
@@ -77,25 +77,25 @@ class Config:
         "schedule": 32.0,
         "args": ("NSE_INDEX|Nifty 50", "1m")
     },
-    "trend-every-34sec": {
+    "trend-every-35sec": {
         "task": "app.tasks.task_trend.analyze_trend",
-        "schedule": 34.0,
+        "schedule": 35.0,
         "args": ("NSE_INDEX|Nifty 50", "1m")
     },
-    "option-chain-every-36sec": {
+    "option-chain-every-300sec": {
         "task": "app.tasks.task_option_chain.fetch_option_data",
-        "schedule": 36.0,
+        "schedule": 300.0,
         "args": ("NSE_INDEX|Nifty 50",)
     },
-    "order-manager-every-38sec": {
+    "order-manager-every-20sec": {
         "task": "app.tasks.task_order_manager.manage_orders",
-        "schedule": 38.0,
+        "schedule": 20.0,
         "args": [1],
     },
     "run-end-of-day-cleanup": {
         "task": "app.tasks.cleanup_task.end_of_day_cleanup",
-        "schedule": crontab(hour=9, minute=10, day_of_week='mon-fri'),
+        "schedule": crontab(hour=15, minute=30, day_of_week='mon-fri'),
         "args": ("NSE_INDEX|Nifty 50", 10, 25),
     }
-}        
+}       
 

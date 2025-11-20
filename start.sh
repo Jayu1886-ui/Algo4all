@@ -30,7 +30,7 @@ if [ ! -f "access_token.txt" ]; then
   echo "➡️  Please log in once through the web app to generate a new Upstox access token."
   echo "---------------------------------------------"
   # Optional: uncomment next line to auto-exit instead of running partial services
-  exit 1
+  #exit 1
 fi
 
 # --- Step 3: Ensure Redis is running ---

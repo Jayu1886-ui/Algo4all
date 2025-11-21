@@ -64,7 +64,7 @@ class Config:
     CELERY_BEAT_SCHEDULE = { 
     "fetch-daily-hist": {
         "task": "app.tasks.task_1_fetch_hist.fetch_hist_data",
-        "schedule": crontab(hour=9, minute=14, day_of_week='mon-fri'),
+        "schedule": 60.0,
         "args":("NSE_INDEX|Nifty 50", "1m")
     },
     "merge-every-30sec": {

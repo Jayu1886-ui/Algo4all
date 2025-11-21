@@ -51,6 +51,11 @@ CELERY_WORKER_PID=$!
 echo "Celery Worker PID: $CELERY_WORKER_PID"
 
 # --- Step 5: Launch Market Data Streamer ---
+if [ ! -f "access_token.txt" ]; then
+  echo "Access token file not found. Waiting 2 minuts..."
+  sleep 180
+fi
+
 echo "Launching Market Data Streamer..."
 python -m app.tasks.streamer.streamer &
 STREAMER_PID=$!
